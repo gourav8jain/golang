@@ -4,10 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
+
+// fake db
+var newcourse []NewCourse
+
+func (c *NewCourse) IsEmpty() bool {
+	return c.CourseId == "0" && c.Name == ""
+}
 
 func main() {
 	url := "https://lco.dev"
@@ -52,6 +62,31 @@ func main() {
 
 	fmt.Println("Welcome to DECODE JSON DATA")
 	DecodeJson()
+
+	// MOD - module to create an API
+	fmt.Println("Mod users")
+	// r := mux.NewRouter()
+	// r.HandleFunc("/", ServeHome).Methods("GET")
+
+	// log.Fatal(http.ListenAndServe(":4000", r))
+
+	// seeding
+
+	newcourse = append(newcourse, NewCourse{CourseId: "1", Name: "course-1", Price: 22,
+		Author: &author{Name: "Author-1", AuthorId: "1"}})
+	newcourse = append(newcourse, NewCourse{CourseId: "2", Name: "course-2", Price: 22,
+		Author: &author{Name: "Author-2", AuthorId: "2"}})
+
+	// build API
+	fmt.Println("Proper API")
+
+	// routing
+	router := mux.NewRouter()
+	router.HandleFunc("/", serveHome1).Methods("GET")
+	router.HandleFunc("/courses", getallcourses).Methods("GET")
+	router.HandleFunc("/course/{id}", getonecourse).Methods("GET")
+	log.Fatal(http.ListenAndServe(":4000", router))
+
 }
 
 func GetRequest() {
@@ -133,13 +168,6 @@ func PostRequest() {
 
 }
 
-type course struct {
-	Id    int `json:"course-id"`
-	Name  string
-	Price int
-	Tags  []string
-}
-
 func EncodeJson() {
 	courseObj := []course{
 		{1, "Course-1", 10, []string{"tag-1", "tag-2"}},
@@ -177,4 +205,70 @@ func DecodeJson() {
 		fmt.Println("Unmarshal", lcocourse)
 		fmt.Printf("%#v\n", lcocourse)
 	}
+}
+
+func greeter() {
+	fmt.Println("Mod users")
+}
+
+func ServeHome(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("<h1>welcome</h1>"))
+}
+
+type course struct {
+	Id    int `json:"course-id"`
+	Name  string
+	Price int
+	Tags  []string
+}
+
+type NewCourse struct {
+	CourseId string `json:"newcourse-id"`
+	Name     string
+	Price    int
+	Author   *author
+}
+
+type author struct {
+	Name     string
+	AuthorId string `json:"author-id"`
+}
+
+// controller - go into seperate files
+// serve home route
+
+func serveHome1(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("<h1>welcome to mod api</h1>"))
+	w.Header().Set("Content-Type", "application/json")
+}
+
+func getallcourses(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("get all courses")
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(newcourse)
+}
+
+func getonecourse(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("get one course")
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+
+	fmt.Println("Params", params)
+
+	for _, course := range newcourse {
+		if course.CourseId == params["id"] {
+			json.NewEncoder(w).Encode(course)
+			return
+		}
+	}
+
+	fmt.Println("No course found for particular course id")
+}
+
+func createonecourse(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("create one course")
+	w.Header().Set("Content-Type", "application/json")
+
+	var newcourse NewCourse
+	_ = json.NewDecoder(r.Body).Decode(&newcourse)
 }
